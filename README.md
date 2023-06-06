@@ -1,1 +1,1 @@
-# UC_ITCS_Y1_JAVA_ControlStructuresActivity_20230606
+# This is a simple data logging programe, contains error handling and logic process. And it is a school work.
