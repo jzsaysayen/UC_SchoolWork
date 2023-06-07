@@ -1,1 +1,1 @@
-# This is a simple data logging programe, contains error handling and logic process. And it is a school work.
+# This folder contain either Java or Python SchoolWork by JIANG YIFEI
