@@ -1,1 +1,744 @@
-placeholder
+# Online Store Management System
+import json
+import time
+from datetime import datetime
+
+def load_data():
+    global inventory, purchased_products, deleted_products
+
+    try:
+        with open("data.json", "r") as file:
+            data = json.load(file)
+            inventory_data = data.get("inventory", [])
+            purchased_products_data = data.get("purchased_products", [])
+            deleted_products_data = data.get("deleted_products", [])
+
+            inventory = [Product(**product_data) for product_data in inventory_data]
+            purchased_products = [Product(**product_data) for product_data in purchased_products_data]
+            deleted_products = [Product(**product_data) for product_data in deleted_products_data]
+
+    except FileNotFoundError:
+        print("--------------------------------------------------")
+        print("No saved data found. Starting with empty inventory.")
+        print("--------------------------------------------------")
+
+inventory = []
+purchased_products = []    
+deleted_products = []       
+
+class Product:          # Product class to represent each product
+    def __init__(self, name, price, quantity, description, timestamp=None):
+        self.name = name
+        self.price = price 
+        self.quantity = quantity
+        self.description = description
+        self.created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.deleted_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def update(self, name, price, quantity, description):
+        self.name = name
+        self.price = price
+        self.quantity = quantity
+        self.description = description
+        self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def deleted(self, name, price, quantity, description):
+        self.name = name
+        self.price = price
+        self.quantity = quantity
+        self.description = description
+        self.deleted_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+class Order:
+    def __init__(self, customer_name, products):
+        self.customer_name = customer_name
+        self.products = products
+        self.total_price = self.calculate_total_price()
+
+    def calculate_total_price(self):
+        total_price = 0
+        for product in self.products:
+            total_price += product.price * product.quantity
+        return total_price
+
+    def display_order_summary(self):
+        print("Order Summary:")
+        print("Customer Name:", self.customer_name)
+        print("Products:")
+        for product in self.products:
+            print("- Name:", product.name)
+            print("  Price:", product.price)
+            print("  Quantity:", product.quantity)
+        print("Total Price:", self.total_price)
+
+
+load_data()
+
+def display_menu():     # Function to display the main menu options
+    print("\n--------------------------------------------------")
+    print("Online Store Management System [OSMS]")
+    print("--------------------------------------------------")
+    print("\nMain Menu:")
+    print("1. Product Management")
+    print("2. Inventory Tracking")
+    print("3. Reporting")
+    print("4. User Mode")
+    print("5. Exit")
+    print("0. !!!Clear Data!!!")
+
+def user_mode():
+    print("\n--------------------------------------------------")
+    print("User Mode")
+    print("--------------------------------------------------")
+    print("1. add order")
+    print("2. Check Cart")
+    print("3. Purchase")
+    print("4. View Order")
+    print("5. Exit")
+    
+def save_data():
+    data = {
+        "inventory": [product.__dict__ for product in inventory],
+        "purchased_products": [product.__dict__ for product in purchased_products],
+        "deleted_products": [product.__dict__ for product in deleted_products]
+    }
+    with open("data.json", "w") as file:
+        json.dump(data, file,  default=lambda obj: obj.__dict__, indent=4)
+
+def clear_data():
+    global inventory, purchased_products, deleted_products
+
+    inventory = []
+    purchased_products = []
+    deleted_products = []
+
+    data = {
+        "inventory": [],
+        "purchased_products": [],
+        "deleted_products": []
+    }
+
+    with open("data.json", "w") as file:
+        json.dump(data, file)
+
+    print("--------------------------------------------------")
+    print("Data cleared successfully.")
+    print("--------------------------------------------------")
+
+def add_product():
+    print("\n--------------------------------------------------")
+    print("--- Add a New Product ---")
+    print("--------------------------------------------------")
+
+    while True:
+        while True:
+            product_name = input("Enter the product name: ")
+
+            # Check if product name is already listed
+            if any(product.name.lower() == product_name.lower() for product in inventory):
+                print("--------------------------------------------------")
+                print("Product name already listed. Please enter a new name.")
+                print("--------------------------------------------------")
+            else:
+                break
+
+        if not product_name:
+            print("--------------------------------------------------")
+            print("Invalid product name.")
+            print("--------------------------------------------------")
+            continue
+
+        while True:
+            product_price = input("Enter the product price (PHP): ")
+            if not product_price.replace('.', '').isdigit():
+                print("--------------------------------------------------")
+                print("Invalid product price. Please enter a valid price.")
+                print("--------------------------------------------------")
+            else:
+                product_price = round(float(product_price), 3)
+                if product_price <= 0:
+                    print("--------------------------------------------------")
+                    print("Invalid product price. Please enter a valid price.")
+                    print("--------------------------------------------------")
+                else:
+                    break
+
+        while True:
+            product_quantity = input("Enter the product quantity: ")
+            if not product_quantity.isdigit() or int(product_quantity) < 0:
+                print("--------------------------------------------------")
+                print("Invalid product quantity. Please enter a valid quantity.")
+                print("--------------------------------------------------")
+            else:
+                product_quantity = int(product_quantity)
+                break
+            
+        product_description = input("Enter the product description: ")
+        
+        product = Product(product_name, product_price, product_quantity, product_description)
+        product.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        while True:
+            confirmation = input("Are you sure you want to add this product? (y/n): ")
+            if confirmation.lower() == 'y':
+                inventory.append(product)
+                print("--------------------------------------------------")
+                print("Product added successfully!")
+                print("--------------------------------------------------")
+                save_data()
+
+                print("\nProduct Information:")
+                print(f"Name: {product.name}")
+                print(f"Price: PHP {product.price:.0f}" if product.price.is_integer() else f"Price: PHP {product.price}")
+                print(f"Quantity: {product.quantity}")
+                print(f"Description: {product.description}")
+                print(f"Created at: {product.timestamp}")
+                print("\n")
+                break
+
+            elif confirmation.lower() == 'n':
+                while True:
+                    continue_prompt = input("Do you want to add another product? (y/n): ")
+                    if continue_prompt.lower() == 'y':
+                        break
+                    elif continue_prompt.lower() == 'n':
+                        print("--------------------------------------------------")
+                        print("Exiting to Main Menu.")
+                        print("--------------------------------------------------")
+                        return
+                    else:
+                        print("--------------------------------------------------")
+                        print("Invalid input. Please enter 'y' or 'n'.")
+                        print("--------------------------------------------------")
+                        continue
+
+        while True:
+            next_action = input("Do you want to add another product? (y/n): ")
+            if next_action.lower() == 'y':
+                break
+            elif next_action.lower() == 'n':
+                print("--------------------------------------------------")
+                print("Exiting to Product Management.")
+                print("--------------------------------------------------")
+                return
+            else:
+                print("--------------------------------------------------")
+                print("Invalid input. Please enter 'y' or 'n'.")
+                print("--------------------------------------------------")
+                continue
+
+def edit_product():
+    if not inventory:
+        print("--------------------------------------------------")
+        print("Inventory is empty. Add products first.")
+        print("--------------------------------------------------")
+        return
+
+    print("\n--------------------------------------------------")
+    print("--- Edit an Existing Product ---")
+    print("--------------------------------------------------")
+
+    while True:
+        print("Current Inventory:")
+        for i, product in enumerate(inventory):
+            print(f"{i+1}. {product.name} - Price: {product.price}, Quantity: {product.quantity}, Description: ({product.description})")
+
+        choice = input("Enter the product number to edit (0 to go back): ")
+        if not choice.isdigit() or int(choice) < 0 or int(choice) > len(inventory):
+            print("--------------------------------------------------")
+            print("Invalid choice.")
+            print("--------------------------------------------------")
+            continue
+
+        choice = int(choice)
+        if choice == 0:
+            return
+
+        product = inventory[choice - 1]
+
+        while True:
+            new_product_name = input("Enter the new product name (leave blank to keep the current name): ")
+            if new_product_name == "":
+                new_product_name = product.name
+
+            # Check if new product name is already listed
+            if any(p.name.lower() == new_product_name.lower() for p in inventory if p != product):
+                print("--------------------------------------------------")
+                print("Product name already listed. Please enter a new name.")
+                print("--------------------------------------------------")
+                continue
+
+            if not new_product_name:
+                print("--------------------------------------------------")
+                print("Invalid product name.")
+                print("--------------------------------------------------")
+                continue
+            break
+
+        while True:
+            new_product_price = input("Enter the new product price (PHP) (leave blank to keep the current price): ")
+            if new_product_price == "":
+                new_product_price = str(product.price)
+            elif not new_product_price.replace('.', '').isdigit():
+                print("--------------------------------------------------")
+                print("Invalid product price.")
+                print("--------------------------------------------------")
+                continue
+            else:
+                new_product_price = round(float(new_product_price), 3)
+            break
+
+        while True:
+            new_product_quantity = input("Enter the new product quantity (leave blank to keep the current quantity): ")
+            if new_product_quantity == "":
+                new_product_quantity = str(product.quantity)
+            elif not new_product_quantity.isdigit() or int(new_product_quantity) < 0:
+                print("--------------------------------------------------")
+                print("Invalid product quantity.")
+                print("--------------------------------------------------")
+                continue
+            break
+
+        while True:
+            new_product_description = input("Enter the new product description (leave blank to keep the current description): ")
+            if new_product_description == "":
+                new_product_description = product.description
+            break
+
+        # Confirmation prompt
+        while True:
+            confirmation = input("Are you sure you want to edit this product? (y/n): ")
+            if confirmation.lower() == 'y':
+                product.update(new_product_name, float(new_product_price), int(new_product_quantity), new_product_description)
+                print("--------------------------------------------------")
+                print("Product edited successfully!")
+                print("--------------------------------------------------")
+                save_data()
+                break
+            elif confirmation.lower() == 'n':
+                print("--------------------------------------------------")
+                print("Product edit cancelled.")
+                print("--------------------------------------------------")
+                break
+            else:
+                print("--------------------------------------------------")
+                print("Invalid input. Please enter 'y' or 'n'.")
+                print("--------------------------------------------------")
+                continue
+
+        # Print the updated product information
+        print("\nUpdated Product Information:")
+        print(f"Name: {product.name}")
+        print(f"Price: PHP {int(product.price) if product.price.is_integer() else product.price}")
+        print(f"Quantity: {product.quantity}")
+        print(f"Description: {product.description}")
+        print(f"Time Log: {product.updated_at}")
+
+        while True:
+            continue_editing = input("Do you want to continue editing products? (y/n): ")
+            if continue_editing.lower() == 'y':
+                break
+            elif continue_editing.lower() == 'n':
+                print("Returning to Product Management Menu.")
+                return
+            else:
+                print("--------------------------------------------------")
+                print("Invalid input. Please enter 'y' or 'n'.")
+                print("--------------------------------------------------")
+                continue
+
+def delete_product():
+    if not inventory:
+        print("--------------------------------------------------")
+        print("Inventory is empty. Add products first.")
+        print("--------------------------------------------------")
+        return
+
+    print("\n--------------------------------------------------")
+    print("--- Delete a Product ---")
+    print("--------------------------------------------------")
+
+    while True:
+        print("Current Inventory:")
+        for i, product in enumerate(inventory):
+            print(f"{i+1}. {product.name} - Price: PHP {product.price}, Quantity: {product.quantity}, Description: ({product.description})")
+
+        choice = input("Enter the product number to delete (0 to go back): ")
+        if not choice.isdigit() or int(choice) < 0 or int(choice) > len(inventory):
+            print("--------------------------------------------------")
+            print("Invalid choice.")
+            print("--------------------------------------------------")
+            continue
+
+        choice = int(choice)
+        if choice == 0:
+            return
+
+        product = inventory[choice - 1]
+
+        # Confirmation prompt
+        while True:
+            confirmation = input("Are you sure you want to delete this product? (y/n): ")
+            if confirmation.lower() == 'y':
+                deleted_product = Product(product.name, product.price, product.quantity, product.description)
+                deleted_product.deleted(product.name, product.price, product.quantity, product.description)
+                deleted_products.append(deleted_product)
+                inventory.remove(product)
+                print("--------------------------------------------------")
+                print("Product deleted successfully!")
+                print("--------------------------------------------------")
+                save_data()
+                # Print the deleted product details
+                print("\nDeleted Product Details:")
+                print(f"Name: {deleted_product.name}")
+                print(f"Price: PHP {int(deleted_product.price) if deleted_product.price.is_integer() else deleted_product.price}")
+                print(f"Quantity: {deleted_product.quantity}")
+                print(f"Description: {deleted_product.description}")
+                print(f"Timestamp: {deleted_product.deleted_at}")
+                break
+            elif confirmation.lower() == 'n':
+                print("--------------------------------------------------")
+                print("Product deletion cancelled.")
+                print("--------------------------------------------------")
+                break
+            else:
+                print("--------------------------------------------------")
+                print("Invalid input. Please enter 'y' or 'n'.")
+                print("--------------------------------------------------")
+                continue
+
+
+        while True:
+            continue_deleting = input("Do you want to continue deleting products? (y/n): ")
+            if continue_deleting.lower() == 'y':
+                break
+            elif continue_deleting.lower() == 'n':
+                print("Returning to Product Management Menu.")
+                return
+            else:
+                print("--------------------------------------------------")
+                print("Invalid input. Please enter 'y' or 'n'.")
+                print("--------------------------------------------------")
+                continue
+
+def check_availability():           # Function to check the availability of a product in the inventory
+    if not inventory:
+        print("--------------------------------------------------")
+        print("Inventory is empty. Add products first.")
+        print("--------------------------------------------------")
+        return
+
+    print("\n--------------------------------------------------")
+    print("--- Check Product Availability ---")
+    print("--------------------------------------------------")
+    while True:
+        print("Current Inventory:")
+        for i, product in enumerate(inventory):
+            print(f"{i+1}. {product.name}")
+        print("---------------------------")
+        print("0. Go back")
+
+        choice = input("Enter the product number to check availability: ")
+        if choice == '0':
+            return
+
+        if not choice.isdigit() or int(choice) < 1 or int(choice) > len(inventory):
+            print("--------------------------------------------------")
+            print("Invalid choice.")
+            print("--------------------------------------------------")
+            continue
+
+        choice = int(choice)
+        product = inventory[choice - 1]
+        print("\n---------------------------")
+        print(f"Product Details:")
+        print(f"Name: {product.name}")
+        print(f"Price: PHP {product.price}")
+        print(f"Quantity: {product.quantity}")
+        print(f"Description: {product.description}")
+        print("---------------------------")
+
+def generate_sales_report():
+    if not purchased_products:
+        print("--------------------------------------------------")
+        print("No purchased products found.")
+        print("--------------------------------------------------")
+        return
+
+    print("\n--------------------------------------------------")
+    print("--- Generate Sales Report ---")
+    print("--------------------------------------------------")
+    total_sales = 0
+    for product in purchased_products:
+        total_sales += float(product.price) * product.quantity
+        print(f"Product: {product.name}")
+        print(f"Price: PHP {product.price}")
+        print(f"Quantity: {product.quantity}")
+        print("---------------------------")
+
+    print(f"Total Sales: PHP {total_sales}")
+
+def generate_inventory_report():
+    if not inventory and not purchased_products and not deleted_products:
+        print("--------------------------------------------------")
+        print("Inventory is empty.")
+        print("--------------------------------------------------")
+        return
+
+    print("\n--------------------------------------------------")
+    print("--- Generate Inventory Report ---")
+    print("--------------------------------------------------")
+
+    if inventory:
+        print("\n---------------------------")
+        print("Inventory:")
+        print("---------------------------")
+        for product in inventory:
+            print(f"Product: {product.name}")
+            print(f"Price: PHP {product.price}")
+            print(f"Quantity: {product.quantity}")
+            print("---------------------------")
+
+    if purchased_products:
+        print("\n---------------------------")
+        print("Purchased Products:")
+        print("---------------------------")
+        for product in purchased_products:
+            print(f"Product: {product.name}")
+            print(f"Price: PHP {product.price}")
+            print(f"Quantity: {product.quantity}")
+            print("---------------------------")
+
+    if deleted_products:
+        print("\n---------------------------")
+        print("Deleted Products:")
+        print("---------------------------")
+        for product in deleted_products:
+            print(f"Product: {product.name}")
+            print(f"Price: PHP {product.price}")
+            print(f"Quantity: {product.quantity}")
+            print("---------------------------")
+
+def purchase_product():
+    while True:
+        if not inventory:
+            print("--------------------------------------------------")
+            print("Inventory is empty. Add products first.")
+            print("--------------------------------------------------")
+            return
+
+        available_products = [product for product in inventory if product.quantity > 0]
+        if not available_products:
+            print("--------------------------------------------------")
+            print("No products available for purchase.")
+            print("Returning to the Main Menu...")
+            print("--------------------------------------------------")
+            return
+
+        print("\n--------------------------------------------------")
+        print("--- Purchase a Product ---")
+        print("--------------------------------------------------")
+        print("Current Inventory:")
+        for i, product in enumerate(available_products):
+            print(f"{i+1}. {product.name} - Price: {product.price}, Quantity: {product.quantity}, Description: ({product.description})")
+
+        choice = input("Enter the product number to purchase (0 to go back): ")
+        if not choice.isdigit() or int(choice) < 0 or int(choice) > len(available_products):
+            print("--------------------------------------------------")
+            print("Invalid choice.")
+            print("--------------------------------------------------")
+            continue
+        
+        choice = int(choice)
+        if choice == 0:
+            break
+
+        product = available_products[choice - 1]
+
+        while True:
+            quantity = input(f"Enter the quantity to purchase for {product.name}: ")
+            if not quantity.isdigit() or int(quantity) < 1:
+                print("--------------------------------------------------")
+                print("Invalid quantity.")
+                print("--------------------------------------------------")
+                continue
+
+            if int(quantity) > product.quantity:
+                print("--------------------------------------------------")
+                print("Insufficient quantity.")
+                print("--------------------------------------------------")
+                continue
+
+            total_price = product.price * int(quantity)
+
+            # Display receipt
+            print("\n---------------------------")
+            print("Receipt:")
+            print(f"Product: {product.name}")
+            print(f"Price per unit: PHP {product.price}")
+            print(f"Quantity: {quantity}")
+            print(f"Total price: PHP {total_price}")
+            print("---------------------------")
+
+            # Confirmation prompt
+            while True:
+                confirmation = input("Confirm the purchase? (y/n): ")
+                if confirmation.lower() == 'y':
+                    product.quantity -= int(quantity)
+                    purchased_product = Product(product.name, product.price, int(quantity), product.description)
+                    purchased_products.append(purchased_product)
+                    print("--------------------------------------------------")
+                    print(f"Purchased {quantity} {product.name}(s) successfully!")
+                    print("Thank You for purchasing in our OSMS! Please Come again!")
+                    print("--------------------------------------------------")
+                    break
+                elif confirmation.lower() == 'n':
+                    print("--------------------------------------------------")
+                    print("Purchase cancelled.")
+                    print("--------------------------------------------------")
+                    break
+                else:
+                    print("--------------------------------------------------")
+                    print("Invalid input. Please enter 'y' or 'n'.")
+                    print("--------------------------------------------------")
+                    continue
+
+            break
+
+        continue_prompt = input("Do you want to continue purchasing? (y/n): ")
+        if continue_prompt.lower() != 'y':
+            print("Returning to the Main Menu...")
+            break
+
+# Main program loop
+while True:
+    display_menu()
+    choice = input("Enter your choice: ")
+
+    if not choice.isdigit():
+        print("--------------------------------------------------")
+        print("Invalid choice. Please enter a number.")
+        print("--------------------------------------------------")
+        continue
+
+    choice = int(choice)
+
+    if choice == 1:
+        while True:
+            print("\n--------------------------------------------------")
+            print("--- Product Management ---")
+            print("--------------------------------------------------")
+            print("1. Add a new product")
+            print("2. Edit an existing product")
+            print("3. Delete a product")
+            print("0. Go back")
+
+            sub_choice = input("Enter your choice: ")
+            if not sub_choice.isdigit() or int(sub_choice) < 0 or int(sub_choice) > 3:
+                print("--------------------------------------------------")
+                print("Invalid choice.")
+                print("--------------------------------------------------")
+                continue
+
+            sub_choice = int(sub_choice)
+
+            if sub_choice == 1:
+                add_product()
+            elif sub_choice == 2:
+                edit_product()
+            elif sub_choice == 3:
+                delete_product()
+            elif sub_choice == 0:
+                break
+
+    elif choice == 2:
+        while True:
+            print("\n--------------------------------------------------")
+            print("--- Inventory Tracking ---")
+            print("--------------------------------------------------")
+            print("1. Check availability")
+            print("0. Go back")
+
+            sub_choice = input("Enter your choice: ")
+            if not sub_choice.isdigit() or int(sub_choice) < 0 or int(sub_choice) > 1:
+                print("--------------------------------------------------")
+                print("Invalid choice.")
+                print("--------------------------------------------------")
+                continue
+
+            sub_choice = int(sub_choice)
+
+            if sub_choice == 1:
+                check_availability()
+            elif sub_choice == 0:
+                break
+
+    elif choice == 3:
+        while True:
+            print("\n--------------------------------------------------")
+            print("--- Reporting ---")
+            print("--------------------------------------------------")
+            print("1. Generate sales report")
+            print("2. Generate inventory report")
+            print("0. Go back")
+
+            sub_choice = input("Enter your choice: ")
+            if not sub_choice.isdigit() or int(sub_choice) < 0 or int(sub_choice) > 2:
+                print("--------------------------------------------------")
+                print("Invalid choice.")
+                print("--------------------------------------------------")
+                continue
+
+            sub_choice = int(sub_choice)
+
+            if sub_choice == 1:
+                generate_sales_report()
+            elif sub_choice == 2:
+                generate_inventory_report()
+            elif sub_choice == 0:
+                break
+
+    elif choice == 4:
+        user_mode()
+
+    elif choice == 5:
+        while True:
+            confirmation = input("Are you sure you want to exit? (y/n): ")
+            if confirmation.lower() == 'y':
+                print("\n--------------------------------------------------")
+                print("Thank you for using our OSMS, Goodbye!")
+                print("--------------------------------------------------")
+                print("\nExiting the program...")
+                break
+            elif confirmation.lower() == 'n':
+                print("\nReturning to the Main Menu...")
+                break
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+                continue
+        if confirmation.lower() == 'y':
+            break
+
+    elif choice == 0:
+        while True:
+            confirmation = input("This will clear all data saved from json.file! Are you sure about this? (y/n): ")
+            if confirmation.lower() == 'y':
+                print("\n--------------------------------------------------")
+                print("!!! CLEARING DATA !!!")
+                print("!!! DATA CLEANED !!!")
+                print("--------------------------------------------------")
+                break
+            elif confirmation.lower() == 'n':
+                print("\nReturning to the Main Menu...")
+                break
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+                continue
+        if confirmation.lower() == 'y':
+            break
+
+    else:
+        print("--------------------------------------------------")
+        print("Invalid choice. Please enter a valid number.")
+        print("--------------------------------------------------")
